@@ -12577,6 +12577,25 @@ class App extends React.Component<AppProps, AppState> {
       return this.insertVideos(videoFiles, sceneX, sceneY);
     }
 
+    // .md files → render markdown to styled HTML and embed
+    const mdFile = fileItems
+      .map((d) => d.file)
+      .find(
+        (f): f is File =>
+          !!f && (f.name?.toLowerCase().endsWith(".md") || false),
+      );
+    if (mdFile) {
+      try {
+        const { renderMarkdownToHtml } = await import("../data/markdown");
+        const text = await mdFile.text();
+        const html = renderMarkdownToHtml(text, mdFile.name);
+        this.insertHtmlElement(html);
+        return;
+      } catch (e) {
+        console.error("Failed to render markdown:", e);
+      }
+    }
+
     // .html files → insert as embedded HTML
     const htmlFile = fileItems
       .map((d) => d.file)
