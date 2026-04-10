@@ -297,9 +297,8 @@ const _renderStaticScene = ({
 
   const inFrameGroupsMap = new Map<string, boolean>();
 
-  // Paint visible elements
+  // Paint visible elements (all types in z-order, including iframes with snapshots)
   visibleElements
-    .filter((el) => !isIframeLikeElement(el))
     .forEach((element) => {
       try {
         const frameId = element.frameId || appState.frameToHighlight?.id;
@@ -384,22 +383,12 @@ const _renderStaticScene = ({
       }
     });
 
-  // render embeddables on top
+  // render embeddable labels (for export/validation placeholder only)
   visibleElements
     .filter((el) => isIframeLikeElement(el))
     .forEach((element) => {
       try {
         const render = () => {
-          renderElement(
-            element,
-            elementsMap,
-            allElementsMap,
-            rc,
-            context,
-            renderConfig,
-            appState,
-          );
-
           if (
             isIframeLikeElement(element) &&
             (isExporting ||

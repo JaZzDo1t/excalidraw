@@ -98,6 +98,7 @@ export * from "./transformHandles";
 export * from "./typeChecks";
 export * from "./utils";
 export * from "./video";
+export * from "./embeddableSnapshot";
 export * from "./zindex";
 export * from "./arrows/helpers";
 export * from "./arrowheads";

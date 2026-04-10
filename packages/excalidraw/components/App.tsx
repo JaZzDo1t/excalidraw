@@ -136,6 +136,8 @@ import {
   newVideoElement,
   generateVideoThumbnail,
   getVideoMetadata,
+  captureAndCacheEmbeddableFrame,
+  generateEmbeddableSnapshot,
   newLinearElement,
   newTextElement,
   refreshTextDimensions,
@@ -654,6 +656,10 @@ class App extends React.Component<AppProps, AppState> {
 
   public files: BinaryFiles = {};
   public imageCache: AppClassProperties["imageCache"] = new Map();
+  public embeddableFrameCache = new Map<
+    string,
+    { image: HTMLImageElement; capturedAt: number }
+  >();
   public videoFrameCache = new Map<
     import("@excalidraw/element/types").FileId,
     { image: HTMLImageElement; capturedAt: number }
@@ -1785,9 +1791,12 @@ class App extends React.Component<AppProps, AppState> {
       .getNonDeletedElements()
       .filter(
         (el): el is Ordered<NonDeleted<ExcalidrawIframeLikeElement>> =>
-          (isEmbeddableElement(el) &&
+          // Only render DOM overlay for the actively interacted element
+          // All others show as canvas snapshots
+          (this.state.activeEmbeddable?.element.id === el.id) &&
+          ((isEmbeddableElement(el) &&
             this.embedsValidationStatus.get(el.id) === true) ||
-          isIframeElement(el),
+          isIframeElement(el)),
       );
 
     return (
@@ -2558,6 +2567,7 @@ class App extends React.Component<AppProps, AppState> {
                                 this.flowChartCreator.pendingNodes,
                               theme: this.state.theme,
                               videoFrameCache: this.videoFrameCache,
+                              embeddableFrameCache: this.embeddableFrameCache,
                             }}
                           />
                           {this.state.newElement && (
@@ -2580,6 +2590,7 @@ class App extends React.Component<AppProps, AppState> {
                                 pendingFlowchartNodes: null,
                                 theme: this.state.theme,
                                 videoFrameCache: this.videoFrameCache,
+                              embeddableFrameCache: this.embeddableFrameCache,
                               }}
                             />
                           )}
@@ -2997,6 +3008,7 @@ class App extends React.Component<AppProps, AppState> {
       this.addMissingFiles(actionResult.files, actionResult.replaceFiles);
       this.addNewImagesToImageCache();
       this.addNewVideosToVideoFrameCache();
+      this.regenerateEmbeddableSnapshots();
     }
 
     if (actionResult.appState || editingTextElement || this.state.contextMenu) {
@@ -3603,6 +3615,62 @@ class App extends React.Component<AppProps, AppState> {
   }
 
   componentDidUpdate(prevProps: AppProps, prevState: AppState) {
+    // Capture embeddable snapshot when deactivating
+    if (
+      prevState.activeEmbeddable &&
+      !this.state.activeEmbeddable &&
+      isIframeLikeElement(prevState.activeEmbeddable.element)
+    ) {
+      const el = prevState.activeEmbeddable.element;
+      const iframeRef = this.iFrameRefs.get(el.id);
+      if (iframeRef) {
+        captureAndCacheEmbeddableFrame(
+          el.id,
+          iframeRef,
+          el.width,
+          el.height,
+        ).then((img) => {
+          if (img) {
+            this.embeddableFrameCache.set(el.id, {
+              image: img,
+              capturedAt: Date.now(),
+            });
+            ShapeCache.delete(el);
+            this.scene.triggerUpdate();
+          }
+        });
+      }
+    }
+
+    // Regenerate embeddable snapshots if element was resized
+    if (!this.state.resizingElement && prevState.resizingElement) {
+      const el = prevState.resizingElement;
+      if (isIframeLikeElement(el) && (el as any).customData?.embedHtml) {
+        const html = (el as any).customData.embedHtml;
+        // Get latest dimensions from scene
+        const latest = this.scene
+          .getElementsIncludingDeleted()
+          .find((e) => e.id === el.id);
+        if (latest) {
+          generateEmbeddableSnapshot(
+            el.id,
+            html,
+            latest.width,
+            latest.height,
+          ).then((img) => {
+            if (img) {
+              this.embeddableFrameCache.set(el.id, {
+                image: img,
+                capturedAt: Date.now(),
+              });
+              ShapeCache.delete(latest);
+              this.scene.triggerUpdate();
+            }
+          });
+        }
+      }
+    }
+
     // must be updated *before* state change listeners are triggered below
     if (!this._initialized && !this.state.isLoading) {
       this._initialized = true;
@@ -4261,6 +4329,7 @@ class App extends React.Component<AppProps, AppState> {
         if (opts.files) {
           this.addNewImagesToImageCache();
           this.addNewVideosToVideoFrameCache();
+      this.regenerateEmbeddableSnapshots();
         }
       },
     );
@@ -4736,6 +4805,7 @@ class App extends React.Component<AppProps, AppState> {
 
       this.addNewImagesToImageCache();
       this.addNewVideosToVideoFrameCache();
+      this.regenerateEmbeddableSnapshots();
     },
   );
 
@@ -12224,6 +12294,21 @@ class App extends React.Component<AppProps, AppState> {
     });
 
     this.scene.insertElement(element);
+
+    // Generate initial snapshot for canvas rendering
+    generateEmbeddableSnapshot(element.id, html, width, height).then(
+      (img) => {
+        if (img) {
+          this.embeddableFrameCache.set(element.id, {
+            image: img,
+            capturedAt: Date.now(),
+          });
+          ShapeCache.delete(element);
+          this.scene.triggerUpdate();
+        }
+      },
+    );
+
     this.setState((prev) => ({
       selectedElementIds: makeNextSelectedElementIds(
         { [element.id]: true },
@@ -12350,6 +12435,39 @@ class App extends React.Component<AppProps, AppState> {
   private scheduleImageRefresh = throttle(() => {
     this.addNewImagesToImageCache();
   }, IMAGE_RENDER_TIMEOUT);
+
+  private regenerateEmbeddableSnapshots = async () => {
+    const iframeElements = this.scene
+      .getNonDeletedElements()
+      .filter(
+        (el) =>
+          isIframeElement(el) &&
+          (el as any).customData?.embedHtml &&
+          !this.embeddableFrameCache.has(el.id),
+      );
+
+    for (const el of iframeElements) {
+      const html = (el as any).customData?.embedHtml;
+      if (!html) continue;
+      const img = await generateEmbeddableSnapshot(
+        el.id,
+        html,
+        el.width,
+        el.height,
+      );
+      if (img) {
+        this.embeddableFrameCache.set(el.id, {
+          image: img,
+          capturedAt: Date.now(),
+        });
+        ShapeCache.delete(el);
+      }
+    }
+
+    if (iframeElements.length > 0) {
+      this.scene.triggerUpdate();
+    }
+  };
 
   private addNewVideosToVideoFrameCache = async () => {
     const videoElements = this.scene

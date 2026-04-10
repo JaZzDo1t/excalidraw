@@ -394,7 +394,40 @@ const drawElementOnCanvas = (
   switch (element.type) {
     case "rectangle":
     case "iframe":
-    case "embeddable":
+    case "embeddable": {
+      context.save();
+      const embedSnapshot =
+        renderConfig.embeddableFrameCache?.get(element.id);
+      const embedImg = embedSnapshot?.image;
+
+      if (embedImg && embedImg.complete && embedImg.naturalWidth > 0) {
+        if (element.roundness && context.roundRect) {
+          context.beginPath();
+          context.roundRect(
+            0,
+            0,
+            element.width,
+            element.height,
+            getCornerRadius(Math.min(element.width, element.height), element),
+          );
+          context.clip();
+        }
+        context.drawImage(
+          embedImg,
+          0,
+          0,
+          element.width,
+          element.height,
+        );
+      } else {
+        // Fallback: shape outline
+        context.lineJoin = "round";
+        context.lineCap = "round";
+        rc.draw(ShapeCache.generateElementShape(element, renderConfig));
+      }
+      context.restore();
+      break;
+    }
     case "diamond":
     case "ellipse": {
       context.lineJoin = "round";

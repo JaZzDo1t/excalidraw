@@ -39,6 +39,7 @@ export type StaticCanvasRenderConfig = {
   pendingFlowchartNodes: PendingExcalidrawElements | null;
   theme: AppState["theme"];
   videoFrameCache?: Map<FileId, { image: HTMLImageElement; capturedAt: number }>;
+  embeddableFrameCache?: Map<string, { image: HTMLImageElement; capturedAt: number }>;
 };
 
 export type SVGRenderConfig = {
