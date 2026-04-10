@@ -654,8 +654,6 @@ class App extends React.Component<AppProps, AppState> {
 
   public files: BinaryFiles = {};
   public imageCache: AppClassProperties["imageCache"] = new Map();
-  public overlayCanvas!: HTMLCanvasElement;
-  public overlayRc!: import("roughjs/bin/canvas").RoughCanvas;
   public videoFrameCache = new Map<
     import("@excalidraw/element/types").FileId,
     { image: HTMLImageElement; capturedAt: number }
@@ -840,9 +838,7 @@ class App extends React.Component<AppProps, AppState> {
     this.scene = new Scene();
 
     this.canvas = document.createElement("canvas");
-    this.overlayCanvas = document.createElement("canvas");
     this.rc = rough.canvas(this.canvas);
-    this.overlayRc = rough.canvas(this.overlayCanvas);
     this.renderer = new Renderer(this.scene);
     this.visibleElements = [];
 
@@ -2638,65 +2634,6 @@ class App extends React.Component<AppProps, AppState> {
                           )}
                         </ExcalidrawActionManagerContext.Provider>
                         {this.renderEmbeddables()}
-                        {(() => {
-                          // Overlay canvas: re-renders elements ABOVE the
-                          // highest iframe so drawn strokes appear on top
-                          const lastIframeIdx = visibleElements.reduce(
-                            (acc, el, i) =>
-                              isIframeLikeElement(el) || isVideoElement(el)
-                                ? i
-                                : acc,
-                            -1,
-                          );
-                          if (lastIframeIdx < 0) {
-                            return null;
-                          }
-                          const overlayElements = visibleElements.filter(
-                            (_, i) =>
-                              i > lastIframeIdx,
-                          );
-                          if (overlayElements.length === 0) {
-                            return null;
-                          }
-                          return (
-                            <div
-                              style={{
-                                position: "absolute",
-                                top: 0,
-                                left: 0,
-                                zIndex: 3,
-                                pointerEvents: "none",
-                              }}
-                            >
-                            <StaticCanvas
-                              canvas={this.overlayCanvas}
-                              rc={this.overlayRc}
-                              elementsMap={elementsMap}
-                              allElementsMap={allElementsMap}
-                              visibleElements={overlayElements}
-                              sceneNonce={sceneNonce}
-                              selectionNonce={
-                                this.state.selectionElement?.versionNonce
-                              }
-                              scale={window.devicePixelRatio}
-                              appState={this.state}
-                              renderConfig={{
-                                imageCache: this.imageCache,
-                                isExporting: false,
-                                renderGrid: false,
-                                canvasBackgroundColor: "transparent",
-                                embedsValidationStatus:
-                                  this.embedsValidationStatus,
-                                elementsPendingErasure:
-                                  this.elementsPendingErasure,
-                                pendingFlowchartNodes: null,
-                                theme: this.state.theme,
-                                videoFrameCache: this.videoFrameCache,
-                              }}
-                            />
-                            </div>
-                          );
-                        })()}
                         {this.renderVideoOverlays()}
                         {this.renderVideoPlayer()}
                         {this.renderHtmlInsertDialog()}
