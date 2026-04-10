@@ -30,6 +30,7 @@ import { isLineElement } from "./typeChecks";
 import type {
   ExcalidrawElement,
   ExcalidrawImageElement,
+  ExcalidrawVideoElement,
   ExcalidrawTextElement,
   ExcalidrawLinearElement,
   ExcalidrawGenericElement,
@@ -542,5 +543,26 @@ export const newImageElement = (
     fileId: opts.fileId ?? null,
     scale: opts.scale ?? [1, 1],
     crop: opts.crop ?? null,
+  };
+};
+
+export const newVideoElement = (
+  opts: {
+    type: ExcalidrawVideoElement["type"];
+    status?: ExcalidrawVideoElement["status"];
+    fileId?: ExcalidrawVideoElement["fileId"];
+    scale?: ExcalidrawVideoElement["scale"];
+    currentTime?: number;
+    duration?: number | null;
+  } & ElementConstructorOpts,
+): NonDeleted<ExcalidrawVideoElement> => {
+  return {
+    ..._newElementBase<ExcalidrawVideoElement>("video", opts),
+    strokeColor: "transparent",
+    status: opts.status ?? "pending",
+    fileId: opts.fileId ?? null,
+    scale: opts.scale ?? [1, 1],
+    currentTime: opts.currentTime ?? 0,
+    duration: opts.duration ?? null,
   };
 };

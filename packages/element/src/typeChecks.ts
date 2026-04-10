@@ -15,6 +15,8 @@ import type {
   ExcalidrawFreeDrawElement,
   InitializedExcalidrawImageElement,
   ExcalidrawImageElement,
+  ExcalidrawVideoElement,
+  InitializedExcalidrawVideoElement,
   ExcalidrawTextElementWithContainer,
   ExcalidrawTextContainer,
   ExcalidrawFrameElement,
@@ -41,6 +43,18 @@ export const isImageElement = (
   element: ExcalidrawElement | null,
 ): element is ExcalidrawImageElement => {
   return !!element && element.type === "image";
+};
+
+export const isVideoElement = (
+  element: ExcalidrawElement | null,
+): element is ExcalidrawVideoElement => {
+  return !!element && element.type === "video";
+};
+
+export const isInitializedVideoElement = (
+  element: ExcalidrawElement | null,
+): element is InitializedExcalidrawVideoElement => {
+  return !!element && element.type === "video" && !!element.fileId;
 };
 
 export const isEmbeddableElement = (
@@ -185,6 +199,7 @@ export const isBindableElement = (
       element.type === "diamond" ||
       element.type === "ellipse" ||
       element.type === "image" ||
+      element.type === "video" ||
       element.type === "iframe" ||
       element.type === "embeddable" ||
       element.type === "frame" ||
@@ -201,6 +216,7 @@ export const isRectanguloidElement = (
     (element.type === "rectangle" ||
       element.type === "diamond" ||
       element.type === "image" ||
+      element.type === "video" ||
       element.type === "iframe" ||
       element.type === "embeddable" ||
       element.type === "frame" ||
@@ -218,6 +234,7 @@ export const isRectangularElement = (
     element != null &&
     (element.type === "rectangle" ||
       element.type === "image" ||
+      element.type === "video" ||
       element.type === "text" ||
       element.type === "iframe" ||
       element.type === "embeddable" ||
@@ -261,6 +278,7 @@ export const isExcalidrawElement = (
     case "frame":
     case "magicframe":
     case "image":
+    case "video":
     case "selection": {
       return true;
     }
@@ -309,7 +327,8 @@ export const isUsingAdaptiveRadius = (type: string) =>
   type === "rectangle" ||
   type === "embeddable" ||
   type === "iframe" ||
-  type === "image";
+  type === "image" ||
+  type === "video";
 
 export const isUsingProportionalRadius = (type: string) =>
   type === "line" || type === "arrow" || type === "diamond";

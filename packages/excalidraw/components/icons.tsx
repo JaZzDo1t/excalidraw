@@ -435,6 +435,25 @@ export const ImageIcon = createIcon(
   modifiedTablerIconProps,
 );
 
+// custom: HTML <>
+export const HtmlIcon = createIcon(
+  <g strokeWidth="1.5" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M7 8l-4 4 4 4" />
+    <path d="M13 8l4 4-4 4" />
+    <path d="M11 16l-2-8" transform="translate(1 0)" />
+  </g>,
+  modifiedTablerIconProps,
+);
+
+// tabler-icons: video
+export const VideoIcon = createIcon(
+  <g strokeWidth="1.25">
+    <path d="M4.909 2.625h10.182a2.284 2.284 0 0 1 2.284 2.284v10.182a2.284 2.284 0 0 1-2.284 2.284H4.909a2.284 2.284 0 0 1-2.284-2.284V4.909a2.284 2.284 0 0 1 2.284-2.284Z" />
+    <path d="M8.333 7.083v5.834L13.75 10z" fill="currentColor" stroke="none" />
+  </g>,
+  modifiedTablerIconProps,
+);
+
 // tabler-icons: eraser
 export const EraserIcon = createIcon(
   <g strokeWidth="1.5">

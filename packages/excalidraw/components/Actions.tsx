@@ -68,6 +68,8 @@ import DropdownMenu from "./dropdownMenu/DropdownMenu";
 import { PropertiesPopover } from "./PropertiesPopover";
 import {
   EmbedIcon,
+  VideoIcon,
+  HtmlIcon,
   extraToolsIcon,
   frameToolIcon,
   mermaidLogoIcon,
@@ -1075,6 +1077,8 @@ export const ShapesSwitcher = ({
     app.state.preferredSelectionTool.type !== "lasso";
 
   const embeddableToolSelected = activeTool.type === "embeddable";
+  const videoToolSelected = activeTool.type === "video";
+  const htmlToolSelected = activeTool.type === "html";
 
   const { TTDDialogTriggerTunnel } = useTunnels();
 
@@ -1188,6 +1192,8 @@ export const ShapesSwitcher = ({
             "App-toolbar__extra-tools-trigger--selected":
               frameToolSelected ||
               embeddableToolSelected ||
+              videoToolSelected ||
+              htmlToolSelected ||
               lassoToolSelected ||
               // in collab we're already highlighting the laser button
               // outside toolbar, so let's not highlight extra-tools button
@@ -1204,6 +1210,10 @@ export const ShapesSwitcher = ({
             ? frameToolIcon
             : embeddableToolSelected
             ? EmbedIcon
+            : videoToolSelected
+            ? VideoIcon
+            : htmlToolSelected
+            ? HtmlIcon
             : laserToolSelected && !app.props.isCollaborating
             ? laserPointerToolIcon
             : lassoToolSelected
@@ -1231,6 +1241,22 @@ export const ShapesSwitcher = ({
             selected={embeddableToolSelected}
           >
             {t("toolBar.embeddable")}
+          </DropdownMenu.Item>
+          <DropdownMenu.Item
+            onSelect={() => app.setActiveTool({ type: "video" })}
+            icon={VideoIcon}
+            data-testid="toolbar-video"
+            selected={videoToolSelected}
+          >
+            Video
+          </DropdownMenu.Item>
+          <DropdownMenu.Item
+            onSelect={() => app.setActiveTool({ type: "html" })}
+            icon={HtmlIcon}
+            data-testid="toolbar-html"
+            selected={htmlToolSelected}
+          >
+            HTML
           </DropdownMenu.Item>
           <DropdownMenu.Item
             onSelect={() => app.setActiveTool({ type: "laser" })}

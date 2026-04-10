@@ -108,6 +108,8 @@ export const AllowedExcalidrawActiveTools: Record<
   ellipse: true,
   line: true,
   image: true,
+  video: true,
+  html: true,
   arrow: true,
   freedraw: true,
   eraser: false,
@@ -424,6 +426,16 @@ export const restoreElement = (
         fileId: element.fileId,
         scale: element.scale || [1, 1],
         crop: element.crop ?? null,
+      });
+    case "video":
+      return restoreElementWithProperties(element, {
+        status: element.status || "pending",
+        fileId: element.fileId,
+        scale: element.scale || [1, 1],
+        currentTime: element.currentTime ?? 0,
+        duration: element.duration ?? null,
+        playbackRate: element.playbackRate ?? 1,
+        volume: element.volume ?? 1,
       });
     case "line":
     // @ts-ignore LEGACY type

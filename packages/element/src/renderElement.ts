@@ -62,6 +62,7 @@ import {
   hasBoundTextElement,
   isMagicFrameElement,
   isImageElement,
+  isVideoElement,
 } from "./typeChecks";
 import { getContainingFrame } from "./frame";
 import { getCornerRadius } from "./utils";
@@ -359,7 +360,7 @@ IMAGE_ERROR_PLACEHOLDER_IMG.src = `data:${MIME_TYPES.svg},${encodeURIComponent(
 )}`;
 
 const drawImagePlaceholder = (
-  element: ExcalidrawImageElement,
+  element: ExcalidrawImageElement | import("./types").ExcalidrawVideoElement,
   context: CanvasRenderingContext2D,
   theme: StaticCanvasRenderConfig["theme"],
 ) => {
@@ -540,6 +541,45 @@ const drawElementOnCanvas = (
       } else {
         drawImagePlaceholder(element, context, renderConfig.theme);
       }
+      context.restore();
+      break;
+    }
+    case "video": {
+      context.save();
+      const videoFrameEntry =
+        element.fileId !== null
+          ? renderConfig.videoFrameCache?.get(element.fileId)
+          : null;
+      const frameImg = videoFrameEntry?.image;
+
+      if (frameImg != null && frameImg.complete && frameImg.naturalWidth > 0) {
+        if (element.roundness && context.roundRect) {
+          context.beginPath();
+          context.roundRect(
+            0,
+            0,
+            element.width,
+            element.height,
+            getCornerRadius(Math.min(element.width, element.height), element),
+          );
+          context.clip();
+        }
+
+        context.drawImage(
+          frameImg,
+          0,
+          0,
+          frameImg.naturalWidth,
+          frameImg.naturalHeight,
+          0,
+          0,
+          element.width,
+          element.height,
+        );
+      } else {
+        drawImagePlaceholder(element, context, renderConfig.theme);
+      }
+
       context.restore();
       break;
     }
@@ -884,6 +924,7 @@ export const renderElement = (
     case "line":
     case "arrow":
     case "image":
+    case "video":
     case "text":
     case "iframe":
     case "embeddable": {
@@ -973,7 +1014,7 @@ export const renderElement = (
         } else {
           context.rotate(element.angle);
 
-          if (element.type === "image") {
+          if (element.type === "image" || element.type === "video") {
             // note: scale must be applied *after* rotating
             context.scale(element.scale[0], element.scale[1]);
           }

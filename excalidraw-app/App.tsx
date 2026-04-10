@@ -55,7 +55,7 @@ import {
   restoreElements,
 } from "@excalidraw/excalidraw/data/restore";
 import { newElementWith } from "@excalidraw/element";
-import { isInitializedImageElement } from "@excalidraw/element";
+import { isInitializedImageElement, isVideoElement } from "@excalidraw/element";
 import clsx from "clsx";
 import {
   parseLibraryTokensFromUrl,
@@ -466,6 +466,9 @@ const ExcalidrawWrapper = () => {
             if (isInitializedImageElement(element)) {
               return acc.concat(element.fileId);
             }
+            if (isVideoElement(element) && (element as any).fileId) {
+              return acc.concat((element as any).fileId);
+            }
             return acc;
           }, [] as FileId[]) || [];
 
@@ -595,6 +598,13 @@ const ExcalidrawWrapper = () => {
                 !currFiles[element.fileId]
               ) {
                 return acc.concat(element.fileId);
+              }
+              if (
+                isVideoElement(element) &&
+                (element as any).fileId &&
+                !currFiles[(element as any).fileId]
+              ) {
+                return acc.concat((element as any).fileId);
               }
               return acc;
             }, [] as FileId[]) || [];
@@ -914,6 +924,7 @@ const ExcalidrawWrapper = () => {
         initialData={initialStatePromiseRef.current.promise}
         isCollaborating={isCollaborating}
         onPointerUpdate={collabAPI?.onPointerUpdate}
+        validateEmbeddable={true}
         UIOptions={{
           canvasActions: {
             toggleTheme: true,

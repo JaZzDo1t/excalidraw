@@ -14,6 +14,7 @@ import {
   newFreeDrawElement,
   newIframeElement,
   newImageElement,
+  newVideoElement,
   newLinearElement,
   newMagicFrameElement,
   newTextElement,
@@ -348,6 +349,17 @@ export class API {
         break;
       case "image":
         element = newImageElement({
+          ...base,
+          width,
+          height,
+          type,
+          fileId: (rest.fileId as string as FileId) ?? null,
+          status: rest.status || "saved",
+          scale: rest.scale || [1, 1],
+        });
+        break;
+      case "video":
+        element = newVideoElement({
           ...base,
           width,
           height,

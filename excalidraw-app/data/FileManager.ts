@@ -1,7 +1,7 @@
 import { CaptureUpdateAction } from "@excalidraw/excalidraw";
 import { compressData } from "@excalidraw/excalidraw/data/encode";
 import { newElementWith } from "@excalidraw/element";
-import { isInitializedImageElement } from "@excalidraw/element";
+import { isInitializedImageElement, isVideoElement } from "@excalidraw/element";
 import { t } from "@excalidraw/excalidraw/i18n";
 
 import type {
@@ -99,16 +99,20 @@ export class FileManager {
     const addedFiles: Map<FileId, BinaryFileData> = new Map();
 
     for (const element of elements) {
-      const fileData =
-        isInitializedImageElement(element) && files[element.fileId];
+      const elFileId =
+        (isInitializedImageElement(element) && element.fileId) ||
+        (isVideoElement(element) && (element as any).fileId) ||
+        null;
+      const fileData = elFileId ? files[elFileId] : null;
 
       if (
+        elFileId &&
         fileData &&
         // NOTE if errored during save, won't retry due to this check
         !this.isFileSavedOrBeingSaved(fileData)
       ) {
-        addedFiles.set(element.fileId, files[element.fileId]);
-        this.savingFiles.set(element.fileId, this.getFileVersion(fileData));
+        addedFiles.set(elFileId, files[elFileId]);
+        this.savingFiles.set(elFileId, this.getFileVersion(fileData));
       }
     }
 

@@ -1,6 +1,7 @@
 import type { UserIdleState, EditorInterface } from "@excalidraw/common";
 import type {
   ExcalidrawElement,
+  FileId,
   NonDeletedElementsMap,
   NonDeletedExcalidrawElement,
   NonDeletedSceneElementsMap,
@@ -37,6 +38,7 @@ export type StaticCanvasRenderConfig = {
   elementsPendingErasure: ElementsPendingErasure;
   pendingFlowchartNodes: PendingExcalidrawElements | null;
   theme: AppState["theme"];
+  videoFrameCache?: Map<FileId, { image: HTMLImageElement; capturedAt: number }>;
 };
 
 export type SVGRenderConfig = {
@@ -170,6 +172,7 @@ export type ElementShapes = {
   line: Drawable[];
   text: null;
   image: null;
+  video: null;
   frame: null;
   magicframe: null;
 };

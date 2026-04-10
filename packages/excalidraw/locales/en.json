@@ -312,6 +312,8 @@
     "selection": "Selection",
     "lasso": "Lasso selection",
     "image": "Insert image",
+    "video": "Insert video",
+    "html": "Insert HTML",
     "rectangle": "Rectangle",
     "diamond": "Diamond",
     "ellipse": "Ellipse",
@@ -347,7 +349,9 @@
     "magicframe": "Wireframe to code",
     "embeddable": "Web Embed",
     "selection": "Selection",
-    "iframe": "IFrame"
+    "iframe": "IFrame",
+    "video": "Video",
+    "html": "HTML"
   },
   "headings": {
     "canvasActions": "Canvas actions",

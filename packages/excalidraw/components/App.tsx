@@ -36,6 +36,7 @@ import {
   EVENT,
   FRAME_STYLE,
   IMAGE_MIME_TYPES,
+  VIDEO_MIME_TYPES,
   IMAGE_RENDER_TIMEOUT,
   LINE_CONFIRM_THRESHOLD,
   MAX_ALLOWED_FILE_BYTES,
@@ -132,6 +133,9 @@ import {
   newArrowElement,
   newElement,
   newImageElement,
+  newVideoElement,
+  generateVideoThumbnail,
+  getVideoMetadata,
   newLinearElement,
   newTextElement,
   refreshTextDimensions,
@@ -144,6 +148,7 @@ import {
   isBoundToContainer,
   isFrameLikeElement,
   isImageElement,
+  isVideoElement,
   isEmbeddableElement,
   isInitializedImageElement,
   isLinearElement,
@@ -379,6 +384,7 @@ import {
   ImageURLToFile,
   isImageFileHandle,
   isSupportedImageFile,
+  isSupportedVideoFile,
   loadSceneOrLibraryFromBlob,
   normalizeFile,
   parseLibraryJSON,
@@ -438,6 +444,8 @@ import ConvertElementTypePopup, {
   convertElementTypes,
 } from "./ConvertElementTypePopup";
 
+import { VideoPlayer } from "./VideoPlayer";
+import { HtmlInsertDialog } from "./HtmlInsertDialog";
 import { activeConfirmDialogAtom } from "./ActiveConfirmDialog";
 import BraveMeasureTextError from "./BraveMeasureTextError";
 import { ContextMenu, CONTEXT_MENU_SEPARATOR } from "./ContextMenu";
@@ -451,7 +459,7 @@ import { isSidebarDockedAtom } from "./Sidebar/Sidebar";
 import { StaticCanvas, InteractiveCanvas } from "./canvases";
 import NewElementCanvas from "./canvases/NewElementCanvas";
 import { isPointHittingLink } from "./hyperlink/helpers";
-import { MagicIcon, copyIcon, fullscreenIcon } from "./icons";
+import { MagicIcon, copyIcon, fullscreenIcon, pencilIcon } from "./icons";
 import { AppStateObserver, type OnStateChange } from "./AppStateObserver";
 
 import { findShapeByKey } from "./shapes";
@@ -646,6 +654,10 @@ class App extends React.Component<AppProps, AppState> {
 
   public files: BinaryFiles = {};
   public imageCache: AppClassProperties["imageCache"] = new Map();
+  public videoFrameCache = new Map<
+    import("@excalidraw/element/types").FileId,
+    { image: HTMLImageElement; capturedAt: number }
+  >();
   private iFrameRefs = new Map<ExcalidrawElement["id"], HTMLIFrameElement>();
   /**
    * Indicates whether the embeddable's url has been validated for rendering.
@@ -1547,6 +1559,223 @@ class App extends React.Component<AppProps, AppState> {
     });
   };
 
+  private closeVideoPlayer = (state: {
+    currentTime: number;
+    playbackRate: number;
+    volume: number;
+  }) => {
+    const activeVideo = this.state.activeVideo;
+    if (!activeVideo) {
+      return;
+    }
+    const videoEl = activeVideo.element;
+    this.scene.mutateElement(videoEl, state as any);
+    this.setState({ activeVideo: null });
+    this.scene.triggerUpdate();
+  };
+
+  private extractVideoFrame = async () => {
+    const activeVideo = this.state.activeVideo;
+    if (!activeVideo) {
+      return;
+    }
+    const videoEl = activeVideo.element as any;
+    if (!videoEl.fileId) {
+      return;
+    }
+    const frameEntry = this.videoFrameCache.get(videoEl.fileId);
+    if (!frameEntry) {
+      return;
+    }
+
+    // Convert HTMLImageElement to dataURL
+    const canvas = document.createElement("canvas");
+    canvas.width = frameEntry.image.naturalWidth || videoEl.width;
+    canvas.height = frameEntry.image.naturalHeight || videoEl.height;
+    const ctx = canvas.getContext("2d")!;
+    ctx.drawImage(frameEntry.image, 0, 0);
+    const dataURL = canvas.toDataURL("image/png") as any;
+
+    // Generate new FileId
+    const blob = await new Promise<Blob>((resolve) =>
+      canvas.toBlob((b) => resolve(b!), "image/png"),
+    );
+    const file = new File([blob], "frame.png", { type: "image/png" });
+    const newFileId = (await generateIdFromFile(file)) as any;
+
+    // Store binary data
+    this.files[newFileId] = {
+      mimeType: "image/png",
+      id: newFileId,
+      dataURL,
+      created: Date.now(),
+    };
+
+    // Add to imageCache so it renders immediately
+    const imgEl = new Image();
+    imgEl.src = dataURL;
+    await new Promise((resolve) => {
+      imgEl.onload = resolve;
+      imgEl.onerror = resolve;
+    });
+    this.imageCache.set(newFileId, {
+      image: imgEl,
+      mimeType: "image/png",
+    });
+
+    // Create image element next to video
+    const imageElement = newImageElement({
+      type: "image",
+      fileId: newFileId,
+      status: "saved",
+      x: videoEl.x + videoEl.width + 20,
+      y: videoEl.y,
+      width: videoEl.width,
+      height: videoEl.height,
+    });
+
+    this.scene.insertElement(imageElement);
+    this.setState((prevState) => ({
+      selectedElementIds: makeNextSelectedElementIds(
+        { [imageElement.id]: true },
+        prevState,
+      ),
+    }));
+    this.scene.triggerUpdate();
+  };
+
+  private renderVideoPlayer() {
+    const activeVideo = this.state.activeVideo;
+    if (!activeVideo) {
+      return null;
+    }
+    const element = activeVideo.element as any;
+    if (element.type !== "video") {
+      return null;
+    }
+    return (
+      <VideoPlayer
+        element={element}
+        appState={this.state}
+        files={this.files}
+        videoFrameCache={this.videoFrameCache}
+        onClose={this.closeVideoPlayer}
+        onExtractFrame={this.extractVideoFrame}
+      />
+    );
+  }
+
+  private renderHtmlInsertDialog() {
+    const dlg = this.state.openDialog;
+    if (!dlg || dlg.name !== "htmlInsert") {
+      return null;
+    }
+    let initialHtml: string | undefined;
+    let isEditing = false;
+    if (dlg.editingElementId) {
+      const el = this.scene
+        .getElementsIncludingDeleted()
+        .find((e) => e.id === dlg.editingElementId);
+      if (el && (el as any).customData?.embedHtml) {
+        initialHtml = (el as any).customData.embedHtml;
+        isEditing = true;
+      }
+    }
+    return (
+      <HtmlInsertDialog
+        initialHtml={initialHtml}
+        isEditing={isEditing}
+        onClose={() => this.setState({ openDialog: null })}
+        onInsert={(html) => {
+          if (isEditing) {
+            this.updateHtmlElement(html);
+          } else {
+            this.insertHtmlElement(html);
+          }
+        }}
+      />
+    );
+  }
+
+  private renderVideoOverlays() {
+    // Skip if currently playing - the player overlay handles it
+    if (this.state.activeVideo) {
+      return null;
+    }
+    const videoElements = this.scene
+      .getNonDeletedElements()
+      .filter((el) => isVideoElement(el)) as any[];
+
+    if (videoElements.length === 0) {
+      return null;
+    }
+
+    return (
+      <>
+        {videoElements.map((el: any) => {
+          const { x, y } = sceneCoordsToViewportCoords(
+            { sceneX: el.x, sceneY: el.y },
+            this.state,
+          );
+          const scale = this.state.zoom.value;
+          // Button size: 18% of min dimension, clamped between 60 and 220
+          const btnSize = Math.max(
+            60,
+            Math.min(220, Math.min(el.width, el.height) * 0.18),
+          );
+          const iconSize = Math.round(btnSize * 0.45);
+          return (
+            <div
+              key={el.id}
+              className="excalidraw__video-hover-overlay"
+              style={{
+                position: "absolute",
+                left: 0,
+                top: 0,
+                width: el.width,
+                height: el.height,
+                transform: `translate(${x - this.state.offsetLeft}px, ${
+                  y - this.state.offsetTop
+                }px) scale(${scale})`,
+                transformOrigin: "top left",
+                pointerEvents: "none",
+                zIndex: 2,
+              }}
+            >
+              <button
+                type="button"
+                className="excalidraw__video-hover-play"
+                style={{
+                  width: btnSize,
+                  height: btnSize,
+                  borderWidth: Math.max(2, btnSize * 0.04),
+                }}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  this.setState({
+                    activeVideo: { element: el, state: "playing" },
+                    selectedElementIds: { [el.id]: true },
+                  });
+                }}
+                title="Play video"
+                aria-label="Play video"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width={iconSize}
+                  height={iconSize}
+                >
+                  <path d="M8 5v14l11-7z" fill="currentColor" />
+                </svg>
+              </button>
+            </div>
+          );
+        })}
+      </>
+    );
+  }
+
   private renderEmbeddables() {
     const scale = this.state.zoom.value;
     const normalizedWidth = this.state.width;
@@ -1592,6 +1821,15 @@ class App extends React.Component<AppProps, AppState> {
           if (isIframeElement(el)) {
             src = null;
 
+            // User-provided HTML takes priority over AI generation
+            if (el.customData?.embedHtml != null) {
+              const userHtml = el.customData.embedHtml;
+              src = {
+                intrinsicSize: { w: el.width, h: el.height },
+                type: "document",
+                srcdoc: () => userHtml,
+              } as const;
+            } else {
             const data: MagicGenerationData = (el.customData?.generationData ??
               this.magicGenerations.get(el.id)) || {
               status: "error",
@@ -1724,6 +1962,7 @@ class App extends React.Component<AppProps, AppState> {
                 },
               } as const;
             }
+            } // end else (no embedHtml)
           } else {
             src = getEmbedLink(toValidURL(el.link || ""));
           }
@@ -2318,6 +2557,7 @@ class App extends React.Component<AppProps, AppState> {
                               pendingFlowchartNodes:
                                 this.flowChartCreator.pendingNodes,
                               theme: this.state.theme,
+                              videoFrameCache: this.videoFrameCache,
                             }}
                           />
                           {this.state.newElement && (
@@ -2339,6 +2579,7 @@ class App extends React.Component<AppProps, AppState> {
                                   this.elementsPendingErasure,
                                 pendingFlowchartNodes: null,
                                 theme: this.state.theme,
+                                videoFrameCache: this.videoFrameCache,
                               }}
                             />
                           )}
@@ -2393,6 +2634,9 @@ class App extends React.Component<AppProps, AppState> {
                           )}
                         </ExcalidrawActionManagerContext.Provider>
                         {this.renderEmbeddables()}
+                        {this.renderVideoOverlays()}
+                        {this.renderVideoPlayer()}
+                        {this.renderHtmlInsertDialog()}
                       </ExcalidrawElementsContext.Provider>
                     </ExcalidrawAppStateContext.Provider>
                   </ExcalidrawSetAppStateContext.Provider>
@@ -2752,6 +2996,7 @@ class App extends React.Component<AppProps, AppState> {
     if (actionResult.files) {
       this.addMissingFiles(actionResult.files, actionResult.replaceFiles);
       this.addNewImagesToImageCache();
+      this.addNewVideosToVideoFrameCache();
     }
 
     if (actionResult.appState || editingTextElement || this.state.contextMenu) {
@@ -4015,6 +4260,7 @@ class App extends React.Component<AppProps, AppState> {
       () => {
         if (opts.files) {
           this.addNewImagesToImageCache();
+          this.addNewVideosToVideoFrameCache();
         }
       },
     );
@@ -4489,6 +4735,7 @@ class App extends React.Component<AppProps, AppState> {
       this.scene.triggerUpdate();
 
       this.addNewImagesToImageCache();
+      this.addNewVideosToVideoFrameCache();
     },
   );
 
@@ -5520,6 +5767,12 @@ class App extends React.Component<AppProps, AppState> {
     if (nextActiveTool.type === "image") {
       this.onImageToolbarButtonClick();
     }
+    if (nextActiveTool.type === "video") {
+      this.onVideoToolbarButtonClick();
+    }
+    if (nextActiveTool.type === "html") {
+      this.onHtmlToolbarButtonClick();
+    }
 
     this.setState((prevState) => {
       const commonResets = {
@@ -6472,6 +6725,13 @@ class App extends React.Component<AppProps, AppState> {
       return;
     }
 
+    if (selectedElements.length === 1 && isVideoElement(selectedElements[0])) {
+      this.setState({
+        activeVideo: { element: selectedElements[0], state: "playing" },
+      });
+      return;
+    }
+
     resetCursor(this.interactiveCanvas);
 
     const selectedGroupIds = getSelectedGroupIds(this.state);
@@ -6504,6 +6764,13 @@ class App extends React.Component<AppProps, AppState> {
     resetCursor(this.interactiveCanvas);
     if (!event[KEYS.CTRL_OR_CMD] && !this.state.viewModeEnabled) {
       const hitElement = this.getElementAtPosition(sceneX, sceneY);
+
+      if (isVideoElement(hitElement)) {
+        this.setState({
+          activeVideo: { element: hitElement, state: "playing" },
+        });
+        return;
+      }
 
       if (isIframeLikeElement(hitElement)) {
         this.setState({
@@ -7891,7 +8158,9 @@ class App extends React.Component<AppProps, AppState> {
     } else if (
       this.state.activeTool.type !== "eraser" &&
       this.state.activeTool.type !== "hand" &&
-      this.state.activeTool.type !== "image"
+      this.state.activeTool.type !== "image" &&
+      this.state.activeTool.type !== "video" &&
+      this.state.activeTool.type !== "html"
     ) {
       this.createGenericElementOnPointerDown(
         this.state.activeTool.type,
@@ -11646,6 +11915,345 @@ class App extends React.Component<AppProps, AppState> {
     }
   };
 
+  private onVideoToolbarButtonClick = async () => {
+    try {
+      const clientX = this.state.width / 2 + this.state.offsetLeft;
+      const clientY = this.state.height / 2 + this.state.offsetTop;
+
+      const { x, y } = viewportCoordsToSceneCoords(
+        { clientX, clientY },
+        this.state,
+      );
+
+      const videoFiles = await fileOpen({
+        description: "Video",
+        extensions: Object.keys(
+          VIDEO_MIME_TYPES,
+        ) as (keyof typeof VIDEO_MIME_TYPES)[],
+        multiple: true,
+      });
+
+      this.insertVideos(
+        Array.isArray(videoFiles) ? videoFiles : [videoFiles],
+        x,
+        y,
+      );
+    } catch (error: any) {
+      if (error.name !== "AbortError") {
+        console.error(error);
+      }
+      this.setState(
+        {
+          newElement: null,
+          activeTool: updateActiveTool(this.state, {
+            type: this.state.preferredSelectionTool.type,
+          }),
+        },
+        () => {
+          this.actionManager.executeAction(actionFinalize);
+        },
+      );
+    }
+  };
+
+  private insertVideos = async (
+    videoFiles: File[],
+    sceneX: number,
+    sceneY: number,
+  ) => {
+    const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50MB
+
+    for (const file of videoFiles) {
+      if (file.size > MAX_VIDEO_SIZE) {
+        this.setState({
+          errorMessage: `Video file too large (max 50MB): ${file.name}`,
+        });
+        continue;
+      }
+
+      try {
+        const fileId = (await generateIdFromFile(file)) as
+          import("@excalidraw/element/types").FileId;
+
+        // Read file as dataURL
+        const dataURL = await getDataURL(file);
+
+        // Get video metadata (dimensions, duration)
+        const metadata = await getVideoMetadata(dataURL as string);
+
+        // Calculate display size (max 65% of canvas height)
+        const maxHeight = Math.min(
+          Math.max(this.state.height - 120, 160),
+          metadata.height,
+        );
+        const scale = maxHeight / metadata.height;
+        const width = metadata.width * scale;
+        const height = maxHeight;
+
+        // Generate thumbnail at time 0
+        const thumbnail = await generateVideoThumbnail(
+          dataURL as string,
+          0,
+        );
+        this.videoFrameCache.set(fileId, {
+          image: thumbnail,
+          capturedAt: 0,
+        });
+
+        // Store binary file data via addMissingFiles (persists to IDB)
+        this.addMissingFiles([
+          {
+            mimeType: file.type as any,
+            id: fileId,
+            dataURL: dataURL as any,
+            created: Date.now(),
+            lastRetrieved: Date.now(),
+          },
+        ]);
+
+        // Create video element
+        const videoElement = newVideoElement({
+          type: "video",
+          fileId,
+          status: "saved",
+          x: sceneX,
+          y: sceneY,
+          width,
+          height,
+          duration: metadata.duration,
+        });
+
+        // insertElement properly assigns fractional index
+        this.scene.insertElement(videoElement);
+
+        this.setState((prevState) => ({
+          selectedElementIds: makeNextSelectedElementIds(
+            { [videoElement.id]: true },
+            prevState,
+          ),
+          activeTool: updateActiveTool(prevState, {
+            type: prevState.preferredSelectionTool.type,
+          }),
+        }));
+
+        // Offset for next video if multiple
+        sceneX += width + 20;
+      } catch (error: any) {
+        console.error("Failed to insert video:", error);
+        this.setState({
+          errorMessage: error.message || "Failed to insert video",
+        });
+      }
+    }
+
+    this.actionManager.executeAction(actionFinalize);
+    this.scene.triggerUpdate();
+  };
+
+  private insertPDFImages = async (
+    pdfFile: File,
+    sceneX: number,
+    sceneY: number,
+  ) => {
+    const { renderPDFToImageFiles } = await import("../data/pdf");
+
+    this.setToast({ message: "Loading PDF...", closable: false });
+
+    let pageFiles: File[];
+    let pdfName: string;
+    try {
+      ({ pageFiles, pdfName } = await renderPDFToImageFiles(
+        pdfFile,
+        (current, total) => {
+          this.setToast({
+            message: `Converting PDF: ${current} / ${total} pages`,
+            closable: false,
+          });
+        },
+      ));
+    } catch (error: any) {
+      this.setToast(null);
+      this.setState({
+        errorMessage: error.message || t("errors.imageInsertError"),
+      });
+      return;
+    }
+
+    if (pageFiles.length === 0) {
+      this.setToast(null);
+      return;
+    }
+
+    this.setToast({ message: "Inserting pages...", closable: false });
+
+    const PADDING = 20;
+
+    const placeholders = pageFiles.map(() =>
+      this.newImagePlaceholder({
+        sceneX,
+        sceneY,
+        addToFrameUnderCursor: false,
+      }),
+    );
+    placeholders.forEach((el) => this.scene.insertElement(el));
+
+    const initialized = await Promise.all(
+      placeholders.map(async (placeholder, i) => {
+        try {
+          return await this.initializeImage(
+            placeholder,
+            await normalizeFile(pageFiles[i]),
+          );
+        } catch (error: any) {
+          this.setState({
+            errorMessage: error.message || t("errors.imageInsertError"),
+          });
+          return newElementWith(placeholder, { isDeleted: true });
+        }
+      }),
+    );
+
+    const validImages = initialized.filter((el) => !el.isDeleted);
+    if (validImages.length === 0) {
+      this.setToast(null);
+      return;
+    }
+
+    const maxPageWidth = Math.max(...validImages.map((el) => el.width));
+    const totalPagesHeight = validImages.reduce(
+      (sum, el) => sum + el.height,
+      0,
+    );
+    const frameWidth = maxPageWidth + PADDING * 2;
+    const frameHeight =
+      totalPagesHeight + PADDING * (validImages.length + 1);
+
+    const frameElement = newFrameElement({
+      x: sceneX,
+      y: sceneY,
+      width: frameWidth,
+      height: frameHeight,
+      name: pdfName,
+      opacity: this.state.currentItemOpacity,
+      locked: false,
+      ...FRAME_STYLE,
+    });
+
+    let currentY = sceneY + PADDING;
+    const positionedImages = validImages.map((el) => {
+      const img = newElementWith(el, {
+        x: sceneX + PADDING,
+        y: currentY,
+        frameId: frameElement.id,
+      });
+      currentY += el.height + PADDING;
+      return img;
+    });
+
+    const initializedMap = arrayToMap(initialized);
+    const positionedMap = arrayToMap(positionedImages);
+
+    const nextElements = [
+      frameElement,
+      ...this.scene
+        .getElementsIncludingDeleted()
+        .map(
+          (el) =>
+            positionedMap.get(el.id) ?? initializedMap.get(el.id) ?? el,
+        ),
+    ];
+
+    this.updateScene({
+      appState: {
+        selectedElementIds: makeNextSelectedElementIds(
+          { [frameElement.id]: true },
+          this.state,
+        ),
+      },
+      elements: nextElements,
+      captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+    });
+
+    this.setState({}, () => {
+      this.actionManager.executeAction(actionFinalize);
+    });
+
+    this.setToast({
+      message: `"${pdfName}" — ${pageFiles.length} pages added`,
+      closable: true,
+      duration: 3000,
+    });
+  };
+
+  private onHtmlToolbarButtonClick = () => {
+    // Reset tool back to selection — dialog drives the flow
+    this.setState({
+      activeTool: updateActiveTool(this.state, {
+        type: this.state.preferredSelectionTool.type,
+      }),
+      openDialog: { name: "htmlInsert" },
+    });
+  };
+
+  private insertHtmlElement = (html: string) => {
+    const clientX = this.state.width / 2 + this.state.offsetLeft;
+    const clientY = this.state.height / 2 + this.state.offsetTop;
+    const { x, y } = viewportCoordsToSceneCoords(
+      { clientX, clientY },
+      this.state,
+    );
+    const width = 600;
+    const height = 400;
+
+    const element = newIframeElement({
+      type: "iframe",
+      x: x - width / 2,
+      y: y - height / 2,
+      strokeColor: "transparent",
+      backgroundColor: "transparent",
+      fillStyle: this.state.currentItemFillStyle,
+      strokeWidth: this.state.currentItemStrokeWidth,
+      strokeStyle: this.state.currentItemStrokeStyle,
+      roughness: this.state.currentItemRoughness,
+      roundness: this.getCurrentItemRoundness("iframe"),
+      opacity: this.state.currentItemOpacity,
+      locked: false,
+      width,
+      height,
+      customData: { embedHtml: html },
+    });
+
+    this.scene.insertElement(element);
+    this.setState((prev) => ({
+      selectedElementIds: makeNextSelectedElementIds(
+        { [element.id]: true },
+        prev,
+      ),
+      openDialog: null,
+    }));
+    this.scene.triggerUpdate();
+  };
+
+  private updateHtmlElement = (html: string) => {
+    const dlg = this.state.openDialog;
+    if (!dlg || dlg.name !== "htmlInsert" || !dlg.editingElementId) {
+      this.setState({ openDialog: null });
+      return;
+    }
+    const el = this.scene
+      .getElementsIncludingDeleted()
+      .find((e) => e.id === dlg.editingElementId);
+    if (!el) {
+      this.setState({ openDialog: null });
+      return;
+    }
+    this.scene.mutateElement(el, {
+      customData: { ...(el.customData || {}), embedHtml: html },
+    } as any);
+    this.setState({ openDialog: null });
+    this.scene.triggerUpdate();
+  };
+
   private getImageNaturalDimensions = (
     imageElement: ExcalidrawImageElement,
     imageHTML: HTMLImageElement,
@@ -11742,6 +12350,48 @@ class App extends React.Component<AppProps, AppState> {
   private scheduleImageRefresh = throttle(() => {
     this.addNewImagesToImageCache();
   }, IMAGE_RENDER_TIMEOUT);
+
+  private addNewVideosToVideoFrameCache = async () => {
+    const videoElements = this.scene
+      .getNonDeletedElements()
+      .filter((el) => isVideoElement(el)) as any[];
+
+    const uncached = videoElements.filter(
+      (el: any) => el.fileId && !this.videoFrameCache.has(el.fileId),
+    );
+
+    if (uncached.length === 0) {
+      return;
+    }
+
+    const updatedElements: any[] = [];
+    for (const el of uncached) {
+      if (!el.fileId) continue;
+      const fileData = this.files[el.fileId as unknown as string];
+      if (!fileData) continue;
+      try {
+        const thumbnail = await generateVideoThumbnail(
+          fileData.dataURL as unknown as string,
+          el.currentTime || 0,
+        );
+        this.videoFrameCache.set(el.fileId, {
+          image: thumbnail,
+          capturedAt: el.currentTime || 0,
+        });
+        updatedElements.push(el);
+      } catch (e) {
+        console.warn("Failed to regenerate video thumbnail:", e);
+      }
+    }
+
+    if (updatedElements.length > 0) {
+      // Invalidate ShapeCache so canvas re-renders with the new thumbnail
+      for (const el of updatedElements) {
+        ShapeCache.delete(el);
+      }
+      this.scene.triggerUpdate();
+    }
+  };
 
   private clearSelection(hitElement: ExcalidrawElement | null): void {
     this.setState((prevState) => ({
@@ -11898,12 +12548,80 @@ class App extends React.Component<AppProps, AppState> {
       }
     }
 
+    // Handle PDF files — render pages to images and wrap in a named frame
+    const pdfFile = fileItems
+      .map((data) => data.file)
+      .find(
+        (file) =>
+          file?.type === "application/pdf" ||
+          file?.name?.toLowerCase().endsWith(".pdf"),
+      );
+
+    if (pdfFile && this.isToolSupported("image")) {
+      return this.insertPDFImages(pdfFile, sceneX, sceneY);
+    }
+
     const imageFiles = fileItems
       .map((data) => data.file)
       .filter((file) => isSupportedImageFile(file));
 
     if (imageFiles.length > 0 && this.isToolSupported("image")) {
       return this.insertImages(imageFiles, sceneX, sceneY);
+    }
+
+    const videoFiles = fileItems
+      .map((data) => data.file)
+      .filter((file): file is File => !!file && isSupportedVideoFile(file));
+
+    if (videoFiles.length > 0) {
+      return this.insertVideos(videoFiles, sceneX, sceneY);
+    }
+
+    // .html files → insert as embedded HTML
+    const htmlFile = fileItems
+      .map((d) => d.file)
+      .find(
+        (f): f is File =>
+          !!f &&
+          (f.type === "text/html" ||
+            f.name?.toLowerCase().endsWith(".html") ||
+            f.name?.toLowerCase().endsWith(".htm")),
+      );
+    if (htmlFile) {
+      try {
+        const text = await htmlFile.text();
+        // Insert at drop point, not center
+        const width = 600;
+        const height = 400;
+        const element = newIframeElement({
+          type: "iframe",
+          x: sceneX - width / 2,
+          y: sceneY - height / 2,
+          strokeColor: "transparent",
+          backgroundColor: "transparent",
+          fillStyle: this.state.currentItemFillStyle,
+          strokeWidth: this.state.currentItemStrokeWidth,
+          strokeStyle: this.state.currentItemStrokeStyle,
+          roughness: this.state.currentItemRoughness,
+          roundness: this.getCurrentItemRoundness("iframe"),
+          opacity: this.state.currentItemOpacity,
+          locked: false,
+          width,
+          height,
+          customData: { embedHtml: text },
+        });
+        this.scene.insertElement(element);
+        this.setState((prev) => ({
+          selectedElementIds: makeNextSelectedElementIds(
+            { [element.id]: true },
+            prev,
+          ),
+        }));
+        this.scene.triggerUpdate();
+        return;
+      } catch (e) {
+        console.error("Failed to read .html file:", e);
+      }
     }
     const excalidrawLibrary_ids = dataTransferList.getData(
       MIME_TYPES.excalidrawlibIds,
@@ -12218,6 +12936,8 @@ class App extends React.Component<AppProps, AppState> {
         height: distance(pointerDownState.originInGrid.y, gridY),
         shouldMaintainAspectRatio: isImageElement(newElement)
           ? !shouldMaintainAspectRatio(event)
+          : isVideoElement(newElement)
+          ? true
           : shouldMaintainAspectRatio(event),
         shouldResizeFromCenter: shouldResizeFromCenter(event),
         zoom: this.state.zoom.value,
@@ -12445,6 +13165,8 @@ class App extends React.Component<AppProps, AppState> {
         shouldResizeFromCenter(event),
         selectedElements.some((element) => isImageElement(element))
           ? !shouldMaintainAspectRatio(event)
+          : selectedElements.some((element) => isVideoElement(element))
+          ? true
           : shouldMaintainAspectRatio(event),
         resizeX,
         resizeY,

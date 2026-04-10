@@ -2,6 +2,7 @@ import { nanoid } from "nanoid";
 
 import {
   IMAGE_MIME_TYPES,
+  VIDEO_MIME_TYPES,
   MIME_TYPES,
   bytesToHexString,
   isPromiseLike,
@@ -133,6 +134,17 @@ export const isSupportedImageFile = (
 ): blob is Blob & { type: ValueOf<typeof IMAGE_MIME_TYPES> } => {
   const { type } = blob || {};
   return isSupportedImageFileType(type);
+};
+
+export const isSupportedVideoFileType = (type: string | null | undefined) => {
+  return !!type && (Object.values(VIDEO_MIME_TYPES) as string[]).includes(type);
+};
+
+export const isSupportedVideoFile = (
+  blob: Blob | null | undefined,
+): blob is Blob & { type: ValueOf<typeof VIDEO_MIME_TYPES> } => {
+  const { type } = blob || {};
+  return isSupportedVideoFileType(type);
 };
 
 export const loadSceneOrLibraryFromBlob = async (

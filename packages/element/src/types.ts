@@ -117,7 +117,11 @@ export type ExcalidrawIframeElement = _ExcalidrawElementBase &
   Readonly<{
     type: "iframe";
     // TODO move later to AI-specific frame
-    customData?: { generationData?: MagicGenerationData };
+    customData?: {
+      generationData?: MagicGenerationData;
+      /** User-provided raw HTML source */
+      embedHtml?: string;
+    };
   }>;
 
 export type ExcalidrawIframeLikeElement =
@@ -160,6 +164,29 @@ export type InitializedExcalidrawImageElement = MarkNonNullable<
   "fileId"
 >;
 
+export type ExcalidrawVideoElement = _ExcalidrawElementBase &
+  Readonly<{
+    type: "video";
+    fileId: FileId | null;
+    /** whether respective file is persisted */
+    status: "pending" | "saved" | "error";
+    /** X and Y scale factors <-1, 1>, used for video axis flipping */
+    scale: [number, number];
+    /** current frozen frame time in seconds */
+    currentTime: number;
+    /** video duration in seconds, populated after metadata loads */
+    duration: number | null;
+    /** playback rate, persisted between sessions */
+    playbackRate?: number;
+    /** volume 0..1, persisted between sessions */
+    volume?: number;
+  }>;
+
+export type InitializedExcalidrawVideoElement = MarkNonNullable<
+  ExcalidrawVideoElement,
+  "fileId"
+>;
+
 export type ExcalidrawFrameElement = _ExcalidrawElementBase & {
   type: "frame";
   name: string | null;
@@ -191,6 +218,7 @@ export type ExcalidrawFlowchartNodeElement =
 export type ExcalidrawRectanguloidElement =
   | ExcalidrawRectangleElement
   | ExcalidrawImageElement
+  | ExcalidrawVideoElement
   | ExcalidrawTextElement
   | ExcalidrawFreeDrawElement
   | ExcalidrawIframeLikeElement
@@ -210,6 +238,7 @@ export type ExcalidrawElement =
   | ExcalidrawArrowElement
   | ExcalidrawFreeDrawElement
   | ExcalidrawImageElement
+  | ExcalidrawVideoElement
   | ExcalidrawFrameElement
   | ExcalidrawMagicFrameElement
   | ExcalidrawIframeElement
@@ -262,6 +291,7 @@ export type ExcalidrawBindableElement =
   | ExcalidrawEllipseElement
   | ExcalidrawTextElement
   | ExcalidrawImageElement
+  | ExcalidrawVideoElement
   | ExcalidrawIframeElement
   | ExcalidrawEmbeddableElement
   | ExcalidrawFrameElement

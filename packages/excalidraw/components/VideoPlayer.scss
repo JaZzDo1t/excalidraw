@@ -1,0 +1,295 @@
+// Overlay shown above each video element on canvas (when not playing)
+.excalidraw__video-hover-overlay {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.excalidraw__video-hover-play {
+  pointer-events: auto;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  border: 3px solid rgba(255, 255, 255, 0.85);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0 0 6px;
+  transition: all 0.18s ease;
+  opacity: 0.85;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.85);
+    border-color: #fff;
+    opacity: 1;
+    transform: scale(1.12);
+    box-shadow: 0 0 24px rgba(255, 255, 255, 0.4);
+  }
+
+  &:active {
+    transform: scale(1.05);
+  }
+}
+
+.excalidraw__video-container {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 3;
+  pointer-events: auto;
+  background: #000;
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.excalidraw__video-element {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  background: #000;
+  cursor: pointer;
+}
+
+// Big center play button
+.excalidraw__video-center-play {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  border: 2px solid rgba(255, 255, 255, 0.8);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: 4px;
+  transition: all 0.15s ease;
+  z-index: 5;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.8);
+    border-color: #fff;
+    transform: translate(-50%, -50%) scale(1.1);
+  }
+}
+
+// Top-right close button
+.excalidraw__video-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  border: none;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 6;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.9);
+  }
+}
+
+.excalidraw__video-controls {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    to top,
+    rgba(0, 0, 0, 0.85) 0%,
+    rgba(0, 0, 0, 0.5) 60%,
+    rgba(0, 0, 0, 0) 100%
+  );
+  padding: 24px 10px 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #fff;
+  font-size: 12px;
+  font-family: system-ui, -apple-system, sans-serif;
+  z-index: 4;
+}
+
+.excalidraw__video-btn {
+  background: rgba(255, 255, 255, 0.12);
+  border: none;
+  color: #fff;
+  width: 30px;
+  height: 30px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s ease, transform 0.15s ease;
+  padding: 0;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.28);
+    transform: scale(1.05);
+  }
+
+  &--text {
+    width: auto;
+    min-width: 36px;
+    padding: 0 8px;
+    font-size: 11px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.excalidraw__video-seek {
+  flex: 1;
+  min-width: 40px;
+  height: 4px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+  cursor: pointer;
+  outline: none;
+
+  &::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    cursor: pointer;
+    border: none;
+  }
+
+  &::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    cursor: pointer;
+    border: none;
+  }
+}
+
+.excalidraw__video-time {
+  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  opacity: 0.95;
+}
+
+// Popup wrapper (relative anchor for popups)
+.excalidraw__video-popup-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.excalidraw__video-popup {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20, 20, 20, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  padding: 6px;
+  display: flex;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  z-index: 10;
+
+  &--speed {
+    flex-direction: row;
+    gap: 4px;
+  }
+
+  &--volume {
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 8px 8px;
+  }
+}
+
+.excalidraw__video-popup-item {
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  transition: background 0.15s ease;
+  min-width: 36px;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.22);
+  }
+
+  &.is-active {
+    background: #4a90e2;
+    color: #fff;
+  }
+}
+
+// Vertical volume slider (rotated)
+.excalidraw__video-volume-vertical {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 80px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+  cursor: pointer;
+  outline: none;
+  transform: rotate(-90deg);
+  margin: 36px 0;
+
+  &::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    cursor: pointer;
+    border: none;
+  }
+
+  &::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #fff;
+    cursor: pointer;
+    border: none;
+  }
+}
+
+.excalidraw__video-volume-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.7);
+  font-variant-numeric: tabular-nums;
+}

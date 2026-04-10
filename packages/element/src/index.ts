@@ -97,6 +97,7 @@ export * from "./transform";
 export * from "./transformHandles";
 export * from "./typeChecks";
 export * from "./utils";
+export * from "./video";
 export * from "./zindex";
 export * from "./arrows/helpers";
 export * from "./arrowheads";

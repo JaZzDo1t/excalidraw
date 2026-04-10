@@ -1,5 +1,6 @@
 import type {
   IMAGE_MIME_TYPES,
+  VIDEO_MIME_TYPES,
   UserIdleState,
   throttleRAF,
   MIME_TYPES,
@@ -113,6 +114,7 @@ export type DataURL = string & { _brand: "DataURL" };
 export type BinaryFileData = {
   mimeType:
     | ValueOf<typeof IMAGE_MIME_TYPES>
+    | ValueOf<typeof VIDEO_MIME_TYPES>
     // future user or unknown file type
     | typeof MIME_TYPES.binary;
   id: FileId;
@@ -156,6 +158,8 @@ export type ToolType =
   | "frame"
   | "magicframe"
   | "embeddable"
+  | "video"
+  | "html"
   | "laser";
 
 export type ElementOrToolType = ExcalidrawElementType | ToolType | "custom";
@@ -284,6 +288,10 @@ export interface AppState {
     element: NonDeletedExcalidrawElement;
     state: "hover" | "active";
   } | null;
+  activeVideo: {
+    element: NonDeletedExcalidrawElement;
+    state: "playing" | "paused";
+  } | null;
   /**
    * for a newly created element
    * - set on pointer down, updated during pointer move, used on pointer up
@@ -396,7 +404,8 @@ export interface AppState {
     | { name: "commandPalette" }
     | { name: "settings" }
     | { name: "elementLinkSelector"; sourceElementId: ExcalidrawElement["id"] }
-    | { name: "charts"; data: Spreadsheet; rawText: string };
+    | { name: "charts"; data: Spreadsheet; rawText: string }
+    | { name: "htmlInsert"; editingElementId?: ExcalidrawElement["id"] };
   /**
    * Reflects user preference for whether the default sidebar should be docked.
    *
@@ -790,7 +799,7 @@ export type AppClassProperties = {
     FileId,
     {
       image: HTMLImageElement | Promise<HTMLImageElement>;
-      mimeType: ValueOf<typeof IMAGE_MIME_TYPES>;
+      mimeType: ValueOf<typeof IMAGE_MIME_TYPES> | ValueOf<typeof VIDEO_MIME_TYPES>;
     }
   >;
   files: BinaryFiles;

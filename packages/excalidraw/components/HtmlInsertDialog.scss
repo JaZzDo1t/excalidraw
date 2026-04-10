@@ -1,0 +1,186 @@
+.HtmlInsertDialog__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.HtmlInsertDialog {
+  width: min(1100px, 90vw);
+  max-height: 85vh;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 24px;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.HtmlInsertDialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  h2 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1a1a1a;
+  }
+}
+
+.HtmlInsertDialog__close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #999;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+
+  &:hover {
+    background: #f0f0f0;
+    color: #333;
+  }
+}
+
+.HtmlInsertDialog__hint {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.4;
+
+  kbd {
+    background: #eee;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    padding: 1px 5px;
+    font-family: monospace;
+    font-size: 11px;
+  }
+}
+
+.HtmlInsertDialog__split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  flex: 1;
+  min-height: 350px;
+}
+
+.HtmlInsertDialog__editor,
+.HtmlInsertDialog__preview {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.HtmlInsertDialog__label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #888;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.HtmlInsertDialog__editor textarea {
+  flex: 1;
+  width: 100%;
+  font-family: "SF Mono", Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #d4d4d4;
+  background: #fafafa;
+  color: #1a1a1a;
+  resize: none;
+  outline: none;
+  tab-size: 2;
+
+  &:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  }
+}
+
+.HtmlInsertDialog__preview iframe {
+  flex: 1;
+  width: 100%;
+  border: 1px solid #d4d4d4;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.HtmlInsertDialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 4px;
+}
+
+.HtmlInsertDialog__btn {
+  padding: 8px 20px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.15s ease, opacity 0.15s ease;
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  &--primary {
+    background: #6366f1;
+    color: #fff;
+
+    &:hover:not(:disabled) {
+      background: #4f46e5;
+    }
+  }
+
+  &--secondary {
+    background: #f0f0f0;
+    color: #333;
+
+    &:hover {
+      background: #e0e0e0;
+    }
+  }
+}
+
+// Dark theme
+.theme--dark .HtmlInsertDialog {
+  background: #1e1e1e;
+
+  .HtmlInsertDialog__header h2 { color: #e4e4e7; }
+  .HtmlInsertDialog__close { color: #888; &:hover { background: #333; color: #ddd; } }
+  .HtmlInsertDialog__hint { color: #aaa; }
+  .HtmlInsertDialog__hint kbd { background: #333; border-color: #555; color: #ddd; }
+  .HtmlInsertDialog__label { color: #888; }
+
+  .HtmlInsertDialog__editor textarea {
+    background: #141414;
+    color: #e4e4e7;
+    border-color: #3f3f46;
+    &:focus { border-color: #6366f1; }
+  }
+
+  .HtmlInsertDialog__btn--secondary {
+    background: #3f3f46;
+    color: #e4e4e7;
+    &:hover { background: #52525b; }
+  }
+}
