@@ -64,6 +64,7 @@ import {
   toValidURL,
   getGridPoint,
   getLineHeight,
+  randomId,
   debounce,
   distance,
   getFontString,
@@ -12096,8 +12097,8 @@ class App extends React.Component<AppProps, AppState> {
         // insertElement properly assigns fractional index
         this.scene.insertElement(videoElement);
 
-        // Add filename label above video
-        this.insertFileNameLabel(file.name, sceneX, sceneY, width);
+        // Add filename label above video (grouped)
+        this.insertFileNameLabel(file.name, videoElement);
 
         this.setState((prevState) => ({
           selectedElementIds: makeNextSelectedElementIds(
@@ -12123,11 +12124,13 @@ class App extends React.Component<AppProps, AppState> {
     this.scene.triggerUpdate();
   };
 
+  /**
+   * Inserts a filename text label above an element and groups them together.
+   * Returns the groupId so the caller can assign it to the media element too.
+   */
   private insertFileNameLabel = (
     fileName: string,
-    elementX: number,
-    elementY: number,
-    elementWidth: number,
+    mediaElement: import("@excalidraw/element/types").ExcalidrawElement,
   ) => {
     const fontSize = 16;
     const fontFamily = 1; // Virgil (hand-drawn)
@@ -12139,9 +12142,11 @@ class App extends React.Component<AppProps, AppState> {
       lineHeight,
     );
 
+    const groupId = randomId();
+
     const label = newTextElement({
-      x: elementX,
-      y: elementY - metrics.height - 8,
+      x: mediaElement.x,
+      y: mediaElement.y - metrics.height - 8,
       text,
       fontSize,
       fontFamily,
@@ -12154,16 +12159,22 @@ class App extends React.Component<AppProps, AppState> {
       strokeStyle: "solid",
       roughness: 0,
       opacity: 70,
-      width: Math.min(metrics.width, elementWidth),
+      width: Math.min(metrics.width, mediaElement.width),
       height: metrics.height,
       locked: false,
       containerId: null,
-      groupIds: [],
+      groupIds: [groupId],
       lineHeight,
       autoResize: true,
     });
 
     this.scene.insertElement(label);
+
+    // Add the same groupId to the media element
+    this.scene.mutateElement(mediaElement, {
+      groupIds: [...mediaElement.groupIds, groupId],
+    } as any);
+
     return label;
   };
 
@@ -12664,15 +12675,10 @@ class App extends React.Component<AppProps, AppState> {
       captureUpdate: CaptureUpdateAction.IMMEDIATELY,
     });
 
-    // Add filename labels above each image
+    // Add filename labels above each image (grouped)
     positioned.forEach((el, i) => {
       if (!el.isDeleted && imageFiles[i]?.name) {
-        this.insertFileNameLabel(
-          imageFiles[i].name,
-          el.x,
-          el.y,
-          el.width,
-        );
+        this.insertFileNameLabel(imageFiles[i].name, el);
       }
     });
 
