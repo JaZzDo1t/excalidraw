@@ -501,6 +501,11 @@ const drawElementOnCanvas = (
               height: img.naturalHeight,
             };
 
+        // Apply image filters (grayscale etc.)
+        if ((element as any).filters?.grayscale) {
+          context.filter = "grayscale(100%)";
+        }
+
         const shouldInvertImage =
           renderConfig.theme === THEME.DARK &&
           cacheEntry?.mimeType === MIME_TYPES.svg;
