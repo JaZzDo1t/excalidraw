@@ -143,6 +143,7 @@ export interface ExcalidrawElementWithCanvas {
   canvasOffsetY: number;
   boundTextElementVersion: number | null;
   imageCrop: ExcalidrawImageElement["crop"] | null;
+  imageSaturation: number;
   containingFrameOpacity: number;
   boundTextCanvas: HTMLCanvasElement;
 }
