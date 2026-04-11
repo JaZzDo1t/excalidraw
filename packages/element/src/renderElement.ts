@@ -336,6 +336,9 @@ const generateElementCanvas = (
     boundTextCanvas,
     angle: element.angle,
     imageCrop: isImageElement(element) ? element.crop : null,
+    imageSaturation: isImageElement(element)
+      ? (element as any).filters?.saturation ?? 100
+      : 100,
   };
 };
 
@@ -706,6 +709,9 @@ const generateElementWithCanvas = (
   const boundTextElement = getBoundTextElement(element, elementsMap);
   const boundTextElementVersion = boundTextElement?.version || null;
   const imageCrop = isImageElement(element) ? element.crop : null;
+  const imageSaturation = isImageElement(element)
+    ? (element as any).filters?.saturation ?? 100
+    : 100;
 
   const containingFrameOpacity =
     getContainingFrame(element, elementsMap)?.opacity || 100;
@@ -716,6 +722,7 @@ const generateElementWithCanvas = (
     prevElementWithCanvas.theme !== appState.theme ||
     prevElementWithCanvas.boundTextElementVersion !== boundTextElementVersion ||
     prevElementWithCanvas.imageCrop !== imageCrop ||
+    (prevElementWithCanvas as any).imageSaturation !== imageSaturation ||
     prevElementWithCanvas.containingFrameOpacity !== containingFrameOpacity ||
     // since we rotate the canvas when copying from cached canvas, we don't
     // regenerate the cached canvas. But we need to in case of labels which are
