@@ -1,7 +1,4 @@
-import { isImageElement } from "@excalidraw/element";
-import { newElementWith } from "@excalidraw/element";
-import { CaptureUpdateAction } from "../store";
-import { t } from "../i18n";
+import { isImageElement, newElementWith, CaptureUpdateAction } from "@excalidraw/element";
 
 import { register } from "./register";
 import { getFormValue } from "./actionProperties";
