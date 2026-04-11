@@ -12096,6 +12096,9 @@ class App extends React.Component<AppProps, AppState> {
         // insertElement properly assigns fractional index
         this.scene.insertElement(videoElement);
 
+        // Add filename label above video
+        this.insertFileNameLabel(file.name, sceneX, sceneY, width);
+
         this.setState((prevState) => ({
           selectedElementIds: makeNextSelectedElementIds(
             { [videoElement.id]: true },
@@ -12118,6 +12121,50 @@ class App extends React.Component<AppProps, AppState> {
 
     this.actionManager.executeAction(actionFinalize);
     this.scene.triggerUpdate();
+  };
+
+  private insertFileNameLabel = (
+    fileName: string,
+    elementX: number,
+    elementY: number,
+    elementWidth: number,
+  ) => {
+    const fontSize = 16;
+    const fontFamily = 1; // Virgil (hand-drawn)
+    const lineHeight = getLineHeight(fontFamily);
+    const text = fileName;
+    const metrics = measureText(
+      text,
+      getFontString({ fontSize, fontFamily }),
+      lineHeight,
+    );
+
+    const label = newTextElement({
+      x: elementX,
+      y: elementY - metrics.height - 8,
+      text,
+      fontSize,
+      fontFamily,
+      textAlign: "left",
+      verticalAlign: "top",
+      strokeColor: this.state.currentItemStrokeColor,
+      backgroundColor: "transparent",
+      fillStyle: "solid",
+      strokeWidth: 1,
+      strokeStyle: "solid",
+      roughness: 0,
+      opacity: 70,
+      width: Math.min(metrics.width, elementWidth),
+      height: metrics.height,
+      locked: false,
+      containerId: null,
+      groupIds: [],
+      lineHeight,
+      autoResize: true,
+    });
+
+    this.scene.insertElement(label);
+    return label;
   };
 
   private insertPDFImages = async (
@@ -12615,6 +12662,18 @@ class App extends React.Component<AppProps, AppState> {
       },
       elements: nextElements,
       captureUpdate: CaptureUpdateAction.IMMEDIATELY,
+    });
+
+    // Add filename labels above each image
+    positioned.forEach((el, i) => {
+      if (!el.isDeleted && imageFiles[i]?.name) {
+        this.insertFileNameLabel(
+          imageFiles[i].name,
+          el.x,
+          el.y,
+          el.width,
+        );
+      }
     });
 
     this.setState({}, () => {
