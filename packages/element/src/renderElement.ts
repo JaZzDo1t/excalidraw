@@ -501,9 +501,13 @@ const drawElementOnCanvas = (
               height: img.naturalHeight,
             };
 
-        // Apply image filters (grayscale etc.)
-        if ((element as any).filters?.grayscale) {
-          context.filter = "grayscale(100%)";
+        // Apply image filters (saturation etc.)
+        const imgFilters = (element as any).filters;
+        if (imgFilters?.saturation != null && imgFilters.saturation < 100) {
+          const grayAmount = 100 - imgFilters.saturation;
+          context.filter = context.filter
+            ? `${context.filter} grayscale(${grayAmount}%)`
+            : `grayscale(${grayAmount}%)`;
         }
 
         const shouldInvertImage =

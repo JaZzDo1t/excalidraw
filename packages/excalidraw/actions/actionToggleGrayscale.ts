@@ -1,34 +1,67 @@
 import { isImageElement } from "@excalidraw/element";
 import { newElementWith } from "@excalidraw/element";
+import { CaptureUpdateAction } from "../store";
+import { t } from "../i18n";
 
 import { register } from "./register";
+import { getFormValue } from "./actionProperties";
+import { Range } from "../components/Range";
 
-export const actionToggleGrayscale = register({
-  name: "toggleGrayscale",
-  label: "Toggle grayscale",
-  trackEvent: { category: "element", action: "toggleGrayscale" },
-  perform(elements, appState, _, app) {
-    const selectedIds = new Set(Object.keys(appState.selectedElementIds));
-    const nextElements = elements.map((el) => {
-      if (selectedIds.has(el.id) && isImageElement(el)) {
-        const currentGrayscale = (el as any).filters?.grayscale ?? false;
-        return newElementWith(el, {
-          filters: { ...((el as any).filters || {}), grayscale: !currentGrayscale },
-        } as any);
-      }
-      return el;
-    });
+export const actionToggleGrayscale = register<number>({
+  name: "changeSaturation",
+  label: "labels.saturation",
+  trackEvent: false,
+  perform: (elements, appState, value) => {
     return {
-      elements: nextElements,
+      elements: elements.map((el) => {
+        if (
+          appState.selectedElementIds[el.id] &&
+          isImageElement(el)
+        ) {
+          return newElementWith(el, {
+            filters: {
+              ...((el as any).filters || {}),
+              saturation: value,
+            },
+          } as any);
+        }
+        return el;
+      }),
       appState,
-      captureUpdate: true,
+      captureUpdate: CaptureUpdateAction.IMMEDIATELY,
     };
   },
   predicate: (_elements, appState, _props, app) => {
-    const selectedElements = app.scene.getSelectedElements(appState);
+    const selected = app.scene.getSelectedElements(appState);
+    return selected.some((el) => isImageElement(el));
+  },
+  PanelComponent: ({ elements, appState, app, updateData }) => {
+    const saturation = getFormValue(
+      elements,
+      app,
+      (element) =>
+        isImageElement(element)
+          ? (element as any).filters?.saturation ?? 100
+          : undefined,
+      (element) => isImageElement(element),
+      () => 100,
+    );
+
+    if (saturation === undefined) {
+      return null;
+    }
+
     return (
-      selectedElements.length >= 1 &&
-      selectedElements.some((el) => isImageElement(el))
+      <Range
+        label="Цветность"
+        value={saturation ?? 100}
+        hasCommonValue={saturation !== null}
+        onChange={updateData}
+        min={0}
+        max={100}
+        step={5}
+        testId="saturation"
+      />
     );
   },
 });

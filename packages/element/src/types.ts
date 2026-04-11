@@ -148,7 +148,8 @@ export type ImageCrop = {
 };
 
 export type ImageFilters = {
-  grayscale?: boolean;
+  /** 0 = fully grayscale, 100 = original color. Default 100. */
+  saturation?: number;
 };
 
 export type ExcalidrawImageElement = _ExcalidrawElementBase &

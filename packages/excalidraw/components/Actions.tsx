@@ -244,6 +244,7 @@ export const SelectedShapeActions = ({
       )}
 
       {renderAction("changeOpacity")}
+      {renderAction("changeSaturation")}
 
       <fieldset>
         <legend>{t("labels.layers")}</legend>
@@ -411,6 +412,7 @@ const CombinedShapeProperties = ({
                 )) &&
                 renderAction("changeRoundness")}
               {renderAction("changeOpacity")}
+              {renderAction("changeSaturation")}
             </div>
           </PropertiesPopover>
         )}
