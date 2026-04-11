@@ -1,4 +1,4 @@
-import { isImageElement, newElementWith, CaptureUpdateAction } from "@excalidraw/element";
+import { isImageElement, newElementWith, CaptureUpdateAction, ShapeCache } from "@excalidraw/element";
 
 import { register } from "./register";
 import { getFormValue } from "./actionProperties";
@@ -15,12 +15,14 @@ export const actionToggleGrayscale = register<number>({
           appState.selectedElementIds[el.id] &&
           isImageElement(el)
         ) {
-          return newElementWith(el, {
+          const updated = newElementWith(el, {
             filters: {
               ...((el as any).filters || {}),
               saturation: value,
             },
           } as any);
+          ShapeCache.delete(el);
+          return updated;
         }
         return el;
       }),
