@@ -505,15 +505,6 @@ const drawElementOnCanvas = (
               height: img.naturalHeight,
             };
 
-        // Apply image filters (saturation etc.)
-        const imgFilters = (element as any).filters;
-        if (imgFilters?.saturation != null && imgFilters.saturation < 100) {
-          const grayAmount = 100 - imgFilters.saturation;
-          context.filter = context.filter
-            ? `${context.filter} grayscale(${grayAmount}%)`
-            : `grayscale(${grayAmount}%)`;
-        }
-
         const shouldInvertImage =
           renderConfig.theme === THEME.DARK &&
           cacheEntry?.mimeType === MIME_TYPES.svg;
@@ -807,6 +798,14 @@ const drawElementFromCanvas = (
 
     // revert afterwards we don't have account for it during drawing
     context.translate(-cx, -cy);
+
+    // Apply image saturation filter when compositing to main canvas
+    if (isImageElement(elementWithCanvas.element)) {
+      const sat = (elementWithCanvas.element as any).filters?.saturation;
+      if (sat != null && sat < 100) {
+        context.filter = `grayscale(${100 - sat}%)`;
+      }
+    }
 
     context.drawImage(
       elementWithCanvas.canvas!,
