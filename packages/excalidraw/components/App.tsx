@@ -1791,13 +1791,28 @@ class App extends React.Component<AppProps, AppState> {
     const embeddableElements = this.scene
       .getNonDeletedElements()
       .filter(
-        (el): el is Ordered<NonDeleted<ExcalidrawIframeLikeElement>> =>
-          // Only render DOM overlay for the actively interacted element
-          // All others show as canvas snapshots
-          (this.state.activeEmbeddable?.element.id === el.id) &&
-          ((isEmbeddableElement(el) &&
-            this.embedsValidationStatus.get(el.id) === true) ||
-          isIframeElement(el)),
+        (el): el is Ordered<NonDeleted<ExcalidrawIframeLikeElement>> => {
+          const isActive =
+            this.state.activeEmbeddable?.element.id === el.id;
+
+          if (isEmbeddableElement(el)) {
+            if (this.embedsValidationStatus.get(el.id) !== true) {
+              return false;
+            }
+            // Render DOM overlay if active OR if no cached snapshot exists
+            // (cross-origin iframes can't be snapshot-captured, so they
+            // always need the live DOM iframe)
+            return isActive || !this.embeddableFrameCache.has(el.id);
+          }
+
+          if (isIframeElement(el)) {
+            // iframe elements with embedHtml can be snapshot-regenerated,
+            // so only show DOM when active
+            return isActive;
+          }
+
+          return false;
+        },
       );
 
     return (
